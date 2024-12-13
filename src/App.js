@@ -181,7 +181,7 @@ function App() {
 
   return (
     <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-      <h1>FPL Dashboard</h1>
+      <h1>Dingle Fantasy Premier League</h1>
       <div>
         <h2>League: {leagueData.leagueName}</h2>
         
@@ -234,7 +234,7 @@ function App() {
           </LineChart>
         </div>
 
-        <div>
+        <div style={{marginTop:'100px' }}>
           <h3>Current Standings</h3>
           <table style={{ 
             width: '100%', 
