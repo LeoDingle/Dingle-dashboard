@@ -106,23 +106,73 @@ function App() {
       return (
         <div style={{ 
           backgroundColor: 'white', 
-          padding: '10px', 
+          padding: '15px',
           border: '1px solid #ccc',
-          borderRadius: '5px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          position: 'fixed',
+          left: '1050px',
+          top: '100px',
+          minWidth: '250px',
+          maxWidth: '300px',
+          maxHeight: '80vh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          zIndex: 1000,
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#888 #f1f1f1'
         }}>
-          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>{`Gameweek ${label}`}</p>
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            backgroundColor: 'white',
+            padding: '5px 0',
+            borderBottom: '2px solid #eee',
+            marginBottom: '10px',
+            zIndex: 1001
+          }}>
+            <h4 style={{ margin: 0 }}>
+              Gameweek {label}
+            </h4>
+          </div>
           {payload
             .sort((a, b) => a.value - b.value)
-            .map((entry) => (
-              <p key={entry.name} style={{ 
-                color: entry.color,
-                margin: '3px 0',
-                fontSize: '14px'
-              }}>
-                {`${entry.name}: ${entry.value}${entry.value === 1 ? 'st' : entry.value === 2 ? 'nd' : entry.value === 3 ? 'rd' : 'th'}`}
-              </p>
-            ))}
+            .map((entry) => {
+              const teamHistory = graphData[label - 1];
+              const teamStats = leagueData.standings.find(
+                team => team.entry_name === entry.name
+              );
+              
+              return (
+                <div 
+                  key={entry.name} 
+                  style={{ 
+                    padding: '8px',
+                    marginBottom: '8px',
+                    borderLeft: `4px solid ${entry.color}`,
+                    backgroundColor: '#f8f9fa'
+                  }}
+                >
+                  <div style={{ 
+                    fontWeight: 'bold',
+                    color: entry.color,
+                    marginBottom: '4px'
+                  }}>
+                    {entry.name}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#666' }}>
+                    <div>Position: {entry.value}
+                      {entry.value === 1 ? 'st' : 
+                        entry.value === 2 ? 'nd' : 
+                        entry.value === 3 ? 'rd' : 'th'}
+                    </div>
+                    <div>Total Points: {teamStats?.total || 'N/A'}</div>
+                    <div>GW Points: {teamStats?.event_total || 'N/A'}</div>
+                    <div>Transfer Cost: {teamStats?.event_transfers_cost || 0}</div>
+                  </div>
+                </div>
+              );
+            })}
         </div>
       );
     }
@@ -130,7 +180,7 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       <h1>FPL Dashboard</h1>
       <div>
         <h2>League: {leagueData.leagueName}</h2>
@@ -138,12 +188,12 @@ function App() {
         <div style={{ marginTop: '20px', marginBottom: '20px' }}>
           <h3>League Positions Over Time</h3>
           <LineChart
-            width={800}
-            height={400}
+            width={1200}
+            height={700}
             data={graphData}
             margin={{
-              top: 5,
-              right: 30,
+              top: 20,
+              right: 300,
               left: 20,
               bottom: 100
             }}
