@@ -8,6 +8,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [teamColors, setTeamColors] = useState({});
+  const [selectedTeams, setSelectedTeams] = useState(new Set());
 
   const leagueId = '862023';
   const teamId = '793479';
@@ -19,6 +20,18 @@ function App() {
       color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
+  };
+
+  const toggleTeamSelection = (teamName) => {
+    setSelectedTeams(prevSelected => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(teamName)) {
+        newSelected.delete(teamName);
+      } else {
+        newSelected.add(teamName);
+      }
+      return newSelected;
+    });
   };
 
   useEffect(() => {
@@ -132,7 +145,7 @@ function App() {
               top: 5,
               right: 30,
               left: 20,
-              bottom: 5,
+              bottom: 100
             }}
           >
             <CartesianGrid strokeDasharray="3 3" />
@@ -147,7 +160,15 @@ function App() {
               ticks={Array.from({ length: leagueData.standings.length }, (_, i) => i + 1)}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend 
+              layout="horizontal"
+              verticalAlign="bottom"
+              align="center"
+              wrapperStyle={{
+                paddingTop: '20px',
+                bottom: -80
+              }}
+            />
             {leagueData.standings.map((team) => (
               <Line
                 key={team.entry_name}
@@ -157,6 +178,7 @@ function App() {
                 stroke={teamColors[team.entry_name]}
                 dot={{ fill: teamColors[team.entry_name] }}
                 activeDot={{ r: 8 }}
+                opacity={selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.1}
               />
             ))}
           </LineChart>
@@ -181,12 +203,19 @@ function App() {
               {leagueData.standings.map((team) => (
                 <tr key={team.entry}>
                   <td style={{ padding: '12px', borderBottom: '1px solid #ddd' }}>{team.rank}</td>
-                  <td style={{ 
-                    padding: '12px', 
-                    borderBottom: '1px solid #ddd',
-                    color: teamColors[team.entry_name],
-                    fontWeight: 'bold'
-                  }}>{team.entry_name}</td>
+                  <td 
+                    onClick={() => toggleTeamSelection(team.entry_name)}
+                    style={{ 
+                      padding: '12px', 
+                      borderBottom: '1px solid #ddd',
+                      color: teamColors[team.entry_name],
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      opacity: selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.3
+                    }}
+                  >
+                    {team.entry_name}
+                  </td>
                   <td style={{ padding: '12px', borderBottom: '1px solid #ddd' }}>{team.total}</td>
                 </tr>
               ))}
