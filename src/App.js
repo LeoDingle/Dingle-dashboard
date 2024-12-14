@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchLeagueData } from './services/fplService';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 
 function App() {
   const [leagueData, setLeagueData] = useState(null);
@@ -9,6 +9,7 @@ function App() {
   const [error, setError] = useState(null);
   const [teamColors, setTeamColors] = useState({});
   const [selectedTeams, setSelectedTeams] = useState(new Set());
+  const [selectedGameweekData, setSelectedGameweekData] = useState(null);
 
   const leagueId = '862023';
   const teamId = '793479';
@@ -44,7 +45,7 @@ function App() {
 
           setLeagueData({
             leagueName: response.current.league?.name || 'Unknown League',
-            standings,
+            standings: response.current.standings
           });
 
           const colors = standings.reduce((acc, team) => {
@@ -79,7 +80,6 @@ function App() {
               return point;
             });
 
-            console.log('Processed graph points:', graphPoints);
             setGraphData(graphPoints);
           }
         } else {
@@ -101,140 +101,106 @@ function App() {
   if (error) return <div>Error: {error}</div>;
   if (!leagueData) return <div>No data available</div>;
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '15px',
-          border: '1px solid #ccc',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          position: 'fixed',
-          left: '1050px',
-          top: '100px',
-          minWidth: '250px',
-          maxWidth: '300px',
-          maxHeight: '80vh',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          zIndex: 1000,
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#888 #f1f1f1'
+  const GameweekPanel = ({ gameweekData, gameweekNumber }) => {
+    if (!gameweekData) return null;
+    
+    return (
+      <div style={{ 
+        position: 'fixed',
+        right: '20px',
+        top: '100px',
+        width: '280px',
+        backgroundColor: 'white',
+        padding: '15px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        border: '1px solid #ccc',
+        maxHeight: '80vh',
+        overflowY: 'auto'
+      }}>
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          backgroundColor: 'white',
+          paddingBottom: '10px',
+          marginBottom: '10px',
+          borderBottom: '2px solid #eee',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          <div style={{
-            position: 'sticky',
-            top: 0,
-            backgroundColor: 'white',
-            padding: '5px 0',
-            borderBottom: '2px solid #eee',
-            marginBottom: '10px',
-            zIndex: 1001
-          }}>
-            <h4 style={{ margin: 0 }}>
-              Gameweek {label}
-            </h4>
-          </div>
-          {payload
-            .sort((a, b) => a.value - b.value)
-            .map((entry) => {
-              const teamHistory = graphData[label - 1];
-              const teamStats = leagueData.standings.find(
-                team => team.entry_name === entry.name
-              );
-              
-              return (
-                <div 
-                  key={entry.name} 
-                  style={{ 
-                    padding: '8px',
-                    marginBottom: '8px',
-                    borderLeft: `4px solid ${entry.color}`,
-                    backgroundColor: '#f8f9fa'
-                  }}
-                >
-                  <div style={{ 
-                    fontWeight: 'bold',
-                    color: entry.color,
-                    marginBottom: '4px'
-                  }}>
-                    {entry.name}
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#666' }}>
-                    <div>Position: {entry.value}
-                      {entry.value === 1 ? 'st' : 
-                        entry.value === 2 ? 'nd' : 
-                        entry.value === 3 ? 'rd' : 'th'}
-                    </div>
-                    <div>Total Points: {teamStats?.total || 'N/A'}</div>
-                    <div>GW Points: {teamStats?.event_total || 'N/A'}</div>
-                    <div>Transfer Cost: {teamStats?.event_transfers_cost || 0}</div>
-                  </div>
-                </div>
-              );
-            })}
+          <h4 style={{ margin: 0 }}>Gameweek {gameweekNumber}</h4>
+          <button 
+            onClick={() => setSelectedGameweekData(null)}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: '18px',
+              padding: '5px'
+            }}
+          >
+            ×
+          </button>
         </div>
-      );
-    }
-    return null;
+        {Object.entries(gameweekData)
+          .filter(([key]) => key !== 'gameweek')
+          .sort(([,a], [,b]) => a - b)
+          .map(([teamName, position]) => {
+            const teamStats = leagueData.standings.results.find(
+              team => team.entry_name === teamName
+            );
+            
+            return (
+              <div 
+                key={teamName}
+                style={{ 
+                  padding: '10px',
+                  marginBottom: '10px',
+                  borderLeft: `4px solid ${teamColors[teamName]}`,
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '4px'
+                }}
+              >
+                <div style={{ 
+                  fontWeight: 'bold',
+                  color: teamColors[teamName],
+                  marginBottom: '4px'
+                }}>
+                  {teamName}
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  <div>Position: {position}
+                    {position === 1 ? 'st' : 
+                      position === 2 ? 'nd' : 
+                      position === 3 ? 'rd' : 'th'}
+                  </div>
+                  <div>Total Points: {teamStats?.total || 'N/A'}</div>
+                  <div>GW Points: {teamStats?.event_total || 'N/A'}</div>
+                  <div>Transfer Cost: {teamStats?.event_transfers_cost || 0}</div>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    );
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div 
+      style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setSelectedGameweekData(null);
+        }
+      }}
+    >
       <h1>Dingle Fantasy Premier League</h1>
       <div>
         <h2>League: {leagueData.leagueName}</h2>
         
-        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-          <h3>League Positions Over Time</h3>
-          <LineChart
-            width={1200}
-            height={700}
-            data={graphData}
-            margin={{
-              top: 20,
-              right: 300,
-              left: 20,
-              bottom: 100
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="gameweek"
-              label={{ value: 'Gameweek', position: 'bottom' }}
-            />
-            <YAxis 
-              reversed 
-              label={{ value: 'Position', angle: -90, position: 'insideLeft' }}
-              domain={[1, leagueData.standings.length]}
-              ticks={Array.from({ length: leagueData.standings.length }, (_, i) => i + 1)}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              layout="horizontal"
-              verticalAlign="bottom"
-              align="center"
-              wrapperStyle={{
-                paddingTop: '20px',
-                bottom: -80
-              }}
-            />
-            {leagueData.standings.map((team) => (
-              <Line
-                key={team.entry_name}
-                type="monotone"
-                dataKey={team.entry_name}
-                name={team.entry_name}
-                stroke={teamColors[team.entry_name]}
-                dot={{ fill: teamColors[team.entry_name] }}
-                activeDot={{ r: 8 }}
-                opacity={selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.1}
-              />
-            ))}
-          </LineChart>
-        </div>
-
-        <div style={{marginTop:'100px' }}>
+        {/* Current Standings Table */}
+        <div style={{ marginBottom: '40px' }}>
           <h3>Current Standings</h3>
           <table style={{ 
             width: '100%', 
@@ -250,9 +216,11 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {leagueData.standings.map((team) => (
+              {leagueData.standings.results.map((team) => (
                 <tr key={team.entry}>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #ddd' }}>{team.rank}</td>
+                  <td style={{ padding: '12px', borderBottom: '1px solid #ddd' }}>
+                    {team.rank}
+                  </td>
                   <td 
                     onClick={() => toggleTeamSelection(team.entry_name)}
                     style={{ 
@@ -266,11 +234,87 @@ function App() {
                   >
                     {team.entry_name}
                   </td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #ddd' }}>{team.total}</td>
+                  <td style={{ padding: '12px', borderBottom: '1px solid #ddd' }}>
+                    {team.total}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* League Graph */}
+        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+          <h3>League Positions Over Time</h3>
+          <div style={{ position: 'relative' }}>
+            <LineChart
+              width={1200}
+              height={700}
+              data={graphData}
+              margin={{
+                top: 20,
+                right: 300,
+                left: 20,
+                bottom: 100
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="gameweek"
+                label={{ value: 'Gameweek', position: 'bottom' }}
+              />
+              <YAxis 
+                reversed 
+                label={{ value: 'Position', angle: -90, position: 'insideLeft' }}
+                domain={[1, leagueData.standings.results.length]}
+                ticks={Array.from({ length: leagueData.standings.results.length }, (_, i) => i + 1)}
+              />
+              <Legend 
+                layout="horizontal"
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{
+                  paddingTop: '20px',
+                  bottom: -80
+                }}
+              />
+              {leagueData.standings.results.map((team) => (
+                <Line
+                  key={team.entry_name}
+                  type="monotone"
+                  dataKey={team.entry_name}
+                  name={team.entry_name}
+                  stroke={teamColors[team.entry_name]}
+                  dot={{ 
+                    fill: teamColors[team.entry_name],
+                    r: 4,
+                    cursor: 'pointer'
+                  }}
+                  activeDot={{ 
+                    r: 8,
+                    cursor: 'pointer',
+                    onClick: (props) => {
+                      const { payload } = props;
+                      if (payload) {
+                        setSelectedGameweekData(payload);
+                      }
+                    }
+                  }}
+                  onClick={(data) => {
+                    if (data && data.payload) {
+                      setSelectedGameweekData(data.payload);
+                    }
+                  }}
+                  cursor="pointer"
+                  opacity={selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.1}
+                />
+              ))}
+            </LineChart>
+            <GameweekPanel 
+              gameweekData={selectedGameweekData} 
+              gameweekNumber={selectedGameweekData?.gameweek}
+            />
+          </div>
         </div>
       </div>
     </div>
