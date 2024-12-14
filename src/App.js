@@ -2,6 +2,76 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { fetchLeagueData } from './services/fplService';
 
+// Add the CSS for the spinner animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);
+
+const LoadingSpinner = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    color: 'white'
+  }}>
+    <div style={{
+      border: '4px solid #1a2637',
+      borderTop: '4px solid #00ff00',
+      borderRadius: '50%',
+      width: '50px',
+      height: '50px',
+      animation: 'spin 1s linear infinite'
+    }} />
+  </div>
+);
+
+const ErrorMessage = ({ message }) => (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    color: 'white',
+    backgroundColor: '#0a1929',
+    padding: '20px',
+    textAlign: 'center'
+  }}>
+    <div style={{
+      backgroundColor: '#1a2637',
+      padding: '20px',
+      borderRadius: '8px',
+      border: '1px solid #ff3333',
+      maxWidth: '400px'
+    }}>
+      <h2 style={{ color: '#ff3333', marginTop: 0 }}>Oops! Something went wrong</h2>
+      <p style={{ marginBottom: '20px' }}>{message}</p>
+      <button 
+        onClick={() => window.location.reload()}
+        style={{
+          backgroundColor: '#2a3747',
+          color: 'white',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseOver={e => e.target.style.backgroundColor = '#3a4757'}
+        onMouseOut={e => e.target.style.backgroundColor = '#2a3747'}
+      >
+        Try Again
+      </button>
+    </div>
+  </div>
+);
+
 function App() {
   const [leagueData, setLeagueData] = useState(null);
   const [graphData, setGraphData] = useState([]);
@@ -182,8 +252,8 @@ function App() {
     return null;
   };
 
-  if (loading) return <div style={{ color: 'white' }}>Loading...</div>;
-  if (error) return <div style={{ color: 'white' }}>Error: {error}</div>;
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} />;
   if (!leagueData) return <div style={{ color: 'white' }}>No data available</div>;
 
   return (
