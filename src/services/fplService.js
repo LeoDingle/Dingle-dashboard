@@ -1,31 +1,38 @@
 import axios from 'axios';
 
 const FPL_BASE_URL = 'https://fantasy.premierleague.com/api';
-const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
+const PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://cors-anywhere.herokuapp.com/'
+];
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export const fetchLeagueData = async (leagueId, teamId) => {
-  try {
-    // First, fetch league standings
-    const leagueResponse = await axios.get(`${PROXY_URL}${FPL_BASE_URL}/leagues-classic/${leagueId}/standings/`);
-    
-    // Wait briefly before continuing
-    await delay(1000);
+  for (const PROXY_URL of PROXIES) {
+    try {
+      console.log(`Attempting with proxy: ${PROXY_URL}`);
+      
+      // First, fetch league standings
+      const leagueResponse = await axios.get(`${PROXY_URL}${encodeURIComponent(FPL_BASE_URL)}/leagues-classic/${leagueId}/standings/`, {
+        headers: {
+          'Origin': 'https://fantasy.premierleague.com',
+          'Accept': 'application/json'
+        }
+      });
+      
+      await delay(1000);
 
-    const teams = leagueResponse.data.standings.results;
-    const teamsHistory = [];
+      const teams = leagueResponse.data.standings.results;
+      const teamsHistory = [];
 
-    // Fetch team histories with longer delays and retry logic
-    for (const team of teams) {
-      let retryCount = 0;
-      let success = false;
-
-      while (!success && retryCount < 3) {
+      // Fetch team histories with longer delays and retry logic
+      for (const team of teams) {
         try {
-          await delay(2000); // Wait 2 seconds between each request
+          await delay(2000); // Wait between requests
           const historyResponse = await axios.get(
-            `${PROXY_URL}${FPL_BASE_URL}/entry/${team.entry}/history/`
+            `${PROXY_URL}${encodeURIComponent(`${FPL_BASE_URL}/entry/${team.entry}/history/`)}`
           );
           
           teamsHistory.push({
@@ -34,21 +41,20 @@ export const fetchLeagueData = async (leagueId, teamId) => {
           });
           
           console.log(`Successfully fetched history for ${team.entry_name}`);
-          success = true;
         } catch (error) {
-          retryCount++;
-          console.log(`Attempt ${retryCount} failed for ${team.entry_name}`);
-          await delay(3000 * retryCount); // Increase delay with each retry
+          console.log(`Failed to fetch history for ${team.entry_name}:`, error.message);
         }
       }
-    }
 
-    return {
-      current: leagueResponse.data,
-      teamsHistory
-    };
-  } catch (error) {
-    console.error('Error fetching league data:', error);
-    throw new Error(`Failed to fetch league data: ${error.message}`);
+      return {
+        current: leagueResponse.data,
+        teamsHistory
+      };
+    } catch (error) {
+      console.error(`Failed with proxy ${PROXY_URL}:`, error.message);
+      continue; // Try next proxy
+    }
   }
+  
+  throw new Error('Failed to fetch data with all available proxies');
 };
