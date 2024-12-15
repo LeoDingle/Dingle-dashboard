@@ -74,9 +74,22 @@ export const fetchLeagueData = async (leagueId, teamId) => {
           const historyUrl = `${FPL_BASE_URL}/entry/${team.entry}/history/`;
           const historyData = await fetchWithProxy(historyUrl);
           
+          // Calculate form from last 5 gameweeks
+          const current = historyData.current;
+          const lastFiveGameweeks = current.slice(-5);
+          const form = lastFiveGameweeks.map(gw => {
+            const points = gw.points - gw.event_transfers_cost;
+            return {
+              gameweek: gw.event,
+              points: points,
+              goodPerformance: points > 50  // We'll consider above 50 as good
+            };
+          });
+
           teamsHistory.push({
             entry_name: team.entry_name,
-            history: historyData.current
+            history: historyData.current,
+            form: form
           });
           
           console.log(`Successfully fetched history for ${team.entry_name}`);

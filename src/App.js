@@ -79,6 +79,7 @@ function App() {
   const [error, setError] = useState(null);
   const [teamColors, setTeamColors] = useState({});
   const [selectedTeams, setSelectedTeams] = useState(new Set());
+  const [showFormInfo, setShowFormInfo] = useState(false);
 
   const leagueId = '862023';
   const teamId = '793479';
@@ -265,7 +266,7 @@ function App() {
       minHeight: '100vh',
       color: 'white'
     }}>
-      <h1>FPL Dashboard</h1>
+      <h1>Dingle Fantasy Premier League Dashboard</h1>
       <div>
         <h2>League: {leagueData.leagueName}</h2>
         
@@ -329,6 +330,86 @@ function App() {
 
         <div>
           <h3>Current Standings</h3>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            marginBottom: '10px' 
+          }}>
+            <span style={{ fontWeight: 'bold' }}>Form Guide</span>
+            <div 
+              style={{ 
+                position: 'relative',
+                display: 'inline-block',
+                cursor: 'help'
+              }}
+              onMouseEnter={() => setShowFormInfo(true)}
+              onMouseLeave={() => setShowFormInfo(false)}
+            >
+              <span style={{ 
+                backgroundColor: '#1a2637',
+                color: 'white',
+                borderRadius: '50%',
+                width: '20px',
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #2a3747'
+              }}>
+                i
+              </span>
+              {showFormInfo && (
+                <div style={{
+                  position: 'absolute',
+                  left: '30px',
+                  top: '0',
+                  backgroundColor: '#1a2637',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  border: '1px solid #2a3747',
+                  zIndex: 1000,
+                  width: '200px',
+                  color: 'white'
+                }}>
+                  <div style={{ marginBottom: '10px' }}>Last 5 gameweeks performance:</div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px' }}>
+                    <span style={{ 
+                      width: '12px', 
+                      height: '12px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#00ff00',
+                      display: 'inline-block',
+                      marginRight: '8px'
+                    }}></span>
+                    Above gameweek average
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px' }}>
+                    <span style={{ 
+                      width: '12px', 
+                      height: '12px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#666',
+                      display: 'inline-block',
+                      marginRight: '8px'
+                    }}></span>
+                    Equal to gameweek average
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ 
+                      width: '12px', 
+                      height: '12px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#ff0000',
+                      display: 'inline-block',
+                      marginRight: '8px'
+                    }}></span>
+                    Below gameweek average
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <table style={{ 
             width: '100%', 
             borderCollapse: 'collapse',
@@ -342,29 +423,65 @@ function App() {
                 <th style={{ padding: '12px', borderBottom: '2px solid #2a3747', color: 'white' }}>Position</th>
                 <th style={{ padding: '12px', borderBottom: '2px solid #2a3747', color: 'white' }}>Team</th>
                 <th style={{ padding: '12px', borderBottom: '2px solid #2a3747', color: 'white' }}>Points</th>
+                <th style={{padding: '12px', borderBottom: '2px solid #2a3747', color: 'white' }}>Form</th>
               </tr>
             </thead>
             <tbody>
-              {leagueData.standings.map((team) => (
-                <tr key={team.entry}>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #2a3747', color: 'white' }}>{team.rank}</td>
-                  <td 
-                    onClick={() => toggleTeamSelection(team.entry_name)}
-                    style={{ 
-                      padding: '12px', 
-                      borderBottom: '1px solid #2a3747',
-                      color: teamColors[team.entry_name],
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      opacity: selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.3
-                    }}
-                  >
-                    {team.entry_name}
-                  </td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #2a3747', color: 'white' }}>{team.total}</td>
-                </tr>
-              ))}
-            </tbody>
+            {leagueData.standings.map((team) => {
+    
+    // Calculate form based on last 5 gameweeks
+    const lastFiveWeeks = graphData.slice(-5);
+    const formDots = lastFiveWeeks.map((week, index) => {
+      // Calculate average points for this gameweek
+      const allPoints = leagueData.standings.map(t => t.event_total || 0);
+      const avgPoints = allPoints.reduce((a, b) => a + b, 0) / allPoints.length;
+      
+      const teamPoints = team.event_total || 0;
+      
+      let color = '#666'; // equal
+      if (teamPoints > avgPoints) color = '#00ff00'; // above average
+      if (teamPoints < avgPoints) color = '#ff0000'; // below average
+                  
+      return (
+        <span
+          key={week.gameweek}
+          style={{
+            width: '12px',
+            height: '12px',
+            borderRadius: '50%',
+            backgroundColor: color,
+            display: 'inline-block',
+            marginRight: '4px'
+          }}
+          title={`GW${week.gameweek}: ${teamPoints}pts (Avg: ${avgPoints.toFixed(1)})`}
+        />
+      );
+    });
+
+    return (
+      <tr key={team.entry}>
+        <td style={{ padding: '12px', borderBottom: '1px solid #2a3747', color: 'white' }}>{team.rank}</td>
+        <td 
+          onClick={() => toggleTeamSelection(team.entry_name)}
+          style={{ 
+            padding: '12px', 
+            borderBottom: '1px solid #2a3747',
+            color: teamColors[team.entry_name],
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            opacity: selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.3
+          }}
+        >
+          {team.entry_name}
+        </td>
+        <td style={{ padding: '12px', borderBottom: '1px solid #2a3747', color: 'white' }}>{team.total}</td>
+        <td style={{ padding: '12px', borderBottom: '1px solid #2a3747', color: 'white' }}>
+          {formDots || 'Loading form data...'}
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
           </table>
         </div>
       </div>
