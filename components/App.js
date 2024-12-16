@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fetchLeagueData } from '../services/fplService';
 
 const LoadingSpinner = () => (
@@ -72,17 +72,17 @@ function App() {
   const [showFormInfo, setShowFormInfo] = useState(false);
   const [graphView, setGraphView] = useState('position'); // 'position' or 'points'
   const [isMobile, setIsMobile] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
    // Add window size detection
    useEffect(() => {
+    setIsClient(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
 
     // Initial check
     checkMobile();
-
-    // Add resize listener
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
@@ -278,6 +278,7 @@ function App() {
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error} />;
   if (!leagueData) return <div style={{ color: 'white' }}>No data available</div>;
+  if (!isClient) return null;
 
   return (
     <div style={{ 
@@ -320,9 +321,9 @@ function App() {
       alignItems: 'center',
       background: '#2a3747',
       padding: '5px',
-      borderRadius: '20px'
+      borderRadius: '20px',
       width: isMobile ? '100%' : 'auto',
-      justifyContent ? isMobile ? 'space-between' : 'flex-start'
+      justifyContent: isMobile ? 'space-between' : 'flex-start'
     }}>
       <button
         onClick={() => setGraphView('position')}
@@ -429,7 +430,7 @@ function App() {
         <div>
           <h3 style={{fontSize: isMobile ? '1.1rem' : '1.25rem' }}>Current Standings</h3>
           <div style={{ 
-            overflowX: 'auto'
+            overflowX: 'auto',
             marginBottom: '10px',
             WebkitOverflowScrolling: 'touch' 
           }}>
