@@ -70,6 +70,7 @@ function App() {
   const [teamColors, setTeamColors] = useState({});
   const [selectedTeams, setSelectedTeams] = useState(new Set());
   const [showFormInfo, setShowFormInfo] = useState(false);
+  const [graphView, setGraphView] = useState('position'); // 'position' or 'points'
 
   const leagueId = '862023';
   const teamId = '793479';
@@ -108,54 +109,62 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const leagueId = '862023';
+        const teamId = '793479';
         const response = await fetchLeagueData(leagueId, teamId);
-
+        
         if (response?.current?.standings?.results) {
           const standings = response.current.standings.results;
-
+  
           setLeagueData({
             leagueName: response.current.league?.name || 'Unknown League',
             standings,
           });
-
+  
           const colors = standings.reduce((acc, team) => {
             acc[team.entry_name] = getRandomColor();
             return acc;
           }, {});
           setTeamColors(colors);
-
+  
           if (response.teamsHistory) {
             const maxGameweek = Math.max(
               ...response.teamsHistory[0].history.map(gw => gw.event)
             );
-
+          
             const graphPoints = Array.from({ length: maxGameweek }, (_, index) => {
               const gameweek = index + 1;
               const point = { gameweek };
               
-              const gameweekData = response.teamsHistory.map(team => {
+              // Get all teams' points for this gameweek
+              const teamsInGameweek = response.teamsHistory.map(team => {
                 const gwData = team.history.find(h => h.event === gameweek);
                 return {
-                  entry_name: team.entry_name,
-                  total_points: gwData ? gwData.total_points : 0
+                  name: team.entry_name,
+                  points: gwData ? gwData.total_points : 0,
+                  event_points: gwData ? gwData.points : 0
                 };
               });
-
-              gameweekData.sort((a, b) => b.total_points - a.total_points);
-
-              gameweekData.forEach((teamData, index) => {
-                point[teamData.entry_name] = index + 1;
+          
+              // Sort teams by points to determine mini-league position
+              teamsInGameweek.sort((a, b) => b.points - a.points);
+              
+              // Assign positions and add to data point
+              teamsInGameweek.forEach((team, index) => {
+                point[`${team.name}_position`] = index + 1;
+                point[`${team.name}_points`] = team.points;
+                point[`${team.name}_event_points`] = team.event_points;
               });
               
               return point;
             });
-
+          
             setGraphData(graphPoints);
           }
         } else {
           throw new Error('Invalid data structure from API.');
         }
-
+  
         setLoading(false);
       } catch (err) {
         console.error('Error loading data:', err);
@@ -163,7 +172,7 @@ function App() {
         setLoading(false);
       }
     };
-
+  
     loadData();
   }, []);
 
@@ -201,34 +210,42 @@ function App() {
             </h4>
           </div>
           {payload
-            .sort((a, b) => a.value - b.value)
+            .sort((a, b) => graphView === 'position' ? 
+              a.value - b.value : 
+              b.value - a.value)
             .map((entry) => {
+              const teamName = entry.name.replace(`_${graphView}`, '');
               const teamStats = leagueData.standings.find(
-                team => team.entry_name === entry.name
+                team => team.entry_name === teamName
               );
               
               return (
                 <div 
-                  key={entry.name} 
+                  key={teamName} 
                   style={{ 
                     padding: '8px',
                     marginBottom: '8px',
-                    borderLeft: `4px solid ${entry.color}`,
+                    borderLeft: `4px solid ${teamColors[teamName]}`,
                     backgroundColor: '#2a3747'
                   }}
                 >
                   <div style={{ 
                     fontWeight: 'bold',
-                    color: entry.color,
+                    color: teamColors[teamName],
                     marginBottom: '4px'
                   }}>
-                    {entry.name}
+                    {teamName}
                   </div>
                   <div style={{ fontSize: '13px', color: '#ffffff' }}>
-                    <div>Position: {entry.value}
-                      {entry.value === 1 ? 'st' : 
-                        entry.value === 2 ? 'nd' : 
-                        entry.value === 3 ? 'rd' : 'th'}
+                    <div>
+                      {graphView === 'position' ? 
+                        `Position: ${entry.value}${
+                          entry.value === 1 ? 'st' : 
+                          entry.value === 2 ? 'nd' : 
+                          entry.value === 3 ? 'rd' : 'th'
+                        }` :
+                        `Points: ${entry.value}`
+                      }
                     </div>
                     <div>Total Points: {teamStats?.total || 'N/A'}</div>
                     <div>GW Points: {teamStats?.event_total || 'N/A'}</div>
@@ -261,61 +278,109 @@ function App() {
         <h2>League: {leagueData.leagueName}</h2>
         
         <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-          <h3>League Positions Over Time</h3>
-          <LineChart
-            width={1000}
-            height={500}
-            data={graphData}
-            margin={{
-              top: 20,
-              right: 300,
-              left: 20,
-              bottom: 100
-            }}
-            style={{
-              backgroundColor: '#1a2637',
-              borderRadius: '8px',
-              padding: '20px'
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a3747" />
-            <XAxis 
-              dataKey="gameweek"
-              label={{ value: 'Gameweek', position: 'bottom', fill: 'white' }}
-              stroke="white"
-            />
-            <YAxis 
-              reversed 
-              label={{ value: 'Position', angle: -90, position: 'insideLeft', fill: 'white' }}
-              domain={[1, leagueData.standings.length]}
-              ticks={Array.from({ length: leagueData.standings.length }, (_, i) => i + 1)}
-              stroke="white"
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              layout="horizontal"
-              verticalAlign="bottom"
-              align="center"
-              wrapperStyle={{
-                paddingTop: '20px',
-                bottom: -80,
-                color: 'white'
-              }}
-            />
-            {leagueData.standings.map((team) => (
-              <Line
-                key={team.entry_name}
-                type="monotone"
-                dataKey={team.entry_name}
-                name={team.entry_name}
-                stroke={teamColors[team.entry_name]}
-                dot={{ fill: teamColors[team.entry_name] }}
-                activeDot={{ r: 8 }}
-                opacity={selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.1}
-                strokeWidth={2}
-              />
-            ))}
-          </LineChart>
+  <div style={{ 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '20px',
+    marginBottom: '20px' 
+  }}>
+    <h3>League {graphView === 'position' ? 'Positions' : 'Points'} Over Time</h3>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      background: '#2a3747',
+      padding: '5px',
+      borderRadius: '20px'
+    }}>
+      <button
+        onClick={() => setGraphView('position')}
+        style={{
+          padding: '8px 16px',
+          borderRadius: '15px',
+          border: 'none',
+          background: graphView === 'position' ? '#00ff00' : 'transparent',
+          color: graphView === 'position' ? '#000' : '#fff',
+          cursor: 'pointer'
+        }}
+      >
+        Position
+      </button>
+      <button
+        onClick={() => setGraphView('points')}
+        style={{
+          padding: '8px 16px',
+          borderRadius: '15px',
+          border: 'none',
+          background: graphView === 'points' ? '#00ff00' : 'transparent',
+          color: graphView === 'points' ? '#000' : '#fff',
+          cursor: 'pointer'
+        }}
+      >
+        Points
+      </button>
+    </div>
+  </div>
+  <LineChart
+  width={1000}
+  height={500}
+  data={graphData}
+  margin={{
+    top: 20,
+    right: 300,
+    left: 20,
+    bottom: 100
+  }}
+  style={{
+    backgroundColor: '#1a2637',
+    borderRadius: '8px',
+    padding: '20px'
+  }}
+>
+  <CartesianGrid strokeDasharray="3 3" stroke="#2a3747" />
+  <XAxis 
+    dataKey="gameweek"
+    label={{ value: 'Gameweek', position: 'bottom', fill: 'white' }}
+    stroke="white"
+  />
+  <YAxis 
+    reversed={graphView === 'position'}
+    label={{ 
+      value: graphView === 'position' ? 'Position' : 'Points', 
+      angle: -90, 
+      position: 'insideLeft', 
+      fill: 'white' 
+    }}
+    domain={graphView === 'position' ? [1, leagueData.standings.length] : ['auto', 'auto']}
+    ticks={graphView === 'position' ? 
+      Array.from({ length: leagueData.standings.length }, (_, i) => i + 1) : 
+      undefined}
+    stroke="white"
+  />
+  <Tooltip content={<CustomTooltip />} />
+  <Legend 
+    layout="horizontal"
+    verticalAlign="bottom"
+    align="center"
+    wrapperStyle={{
+      paddingTop: '20px',
+      bottom: -80,
+      color: 'white'
+    }}
+  />
+  {leagueData.standings.map((team) => (
+    <Line
+      key={team.entry_name}
+      type="monotone"
+      dataKey={`${team.entry_name}_${graphView}`}
+      name={team.entry_name}
+      stroke={teamColors[team.entry_name]}
+      dot={{ fill: teamColors[team.entry_name] }}
+      activeDot={{ r: 8 }}
+      opacity={selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.1}
+      strokeWidth={2}
+    />
+  ))}
+</LineChart>
         </div>
 
         <div>
