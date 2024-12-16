@@ -10,4 +10,12 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+.recharts-wrapper {
+  touch-action: pan-y pinch-zoom;
+}
 
+@media (max-width: 768px) {
+  .recharts-legend-item {
+    font-size: 10px;
+  }
+}

@@ -71,6 +71,21 @@ function App() {
   const [selectedTeams, setSelectedTeams] = useState(new Set());
   const [showFormInfo, setShowFormInfo] = useState(false);
   const [graphView, setGraphView] = useState('position'); // 'position' or 'points'
+  const [isMobile, setIsMobile] = useState(false);
+
+   // Add window size detection
+   useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check
+    checkMobile();
+
+    // Add resize listener
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const leagueId = '862023';
   const teamId = '793479';
@@ -185,10 +200,10 @@ function App() {
           border: '1px solid #2a3747',
           borderRadius: '8px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-          position: 'fixed',
-          left: '1050px',
-          top: '100px',
-          minWidth: '250px',
+          position: 'absolute',
+          right: isMobile ? '10px' : '20px',
+          top: isMobile ? '10px' : '100px',
+          Width: isMobile ?  'calc(100% - 40px' : '250px',
           maxWidth: '300px',
           maxHeight: '80vh',
           overflowY: 'auto',
@@ -266,31 +281,48 @@ function App() {
 
   return (
     <div style={{ 
-      padding: '20px', 
-      maxWidth: '1400px', 
+      padding: isMobile ? '10px' : '20px', 
+      maxWidth: '100%', 
       margin: '0 auto',
       backgroundColor: '#0a1929',
       minHeight: '100vh',
-      color: 'white'
+      color: 'white',
+      overflow: 'hidden' // Prevent horizontal scroll
     }}>
-      <h1>Dingle Fantasy Premier League Dashboard</h1>
+      <h1 style={{
+        fontSize: isMobile ? '1.5rem' : '2rem',
+        marginBottom: isMobile ? '0.5rem' : '1rem'
+      }}>
+      Dingle Fantasy Premier League
+      </h1>
+
       <div>
-        <h2>League: {leagueData.leagueName}</h2>
+        <h2 style={{ fontSize: isMobile ? '1.5rem' : '1.5rem' }}>
+          League: {leagueData.leagueName}
+          </h2>
         
-        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <div style={{
+           marginTop: isMobile ? '10px' : '20px',
+           marginBottom: isMobile ? '10px' : '20px'
+            }}>
   <div style={{ 
     display: 'flex', 
-    alignItems: 'center', 
-    gap: '20px',
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'flex-start' : 'center', 
+    gap: '10px',
     marginBottom: '20px' 
   }}>
-    <h3>League {graphView === 'position' ? 'Positions' : 'Points'} Over Time</h3>
+    <h3 style={{margin: 0 }}>
+      League {graphView === 'position' ? 'Positions' : 'Points'} Over Time
+      </h3>
     <div style={{
       display: 'flex',
       alignItems: 'center',
       background: '#2a3747',
       padding: '5px',
       borderRadius: '20px'
+      width: isMobile ? '100%' : 'auto',
+      justifyContent ? isMobile ? 'space-between' : 'flex-start'
     }}>
       <button
         onClick={() => setGraphView('position')}
@@ -320,53 +352,62 @@ function App() {
       </button>
     </div>
   </div>
-  <LineChart
-  width={1000}
-  height={500}
-  data={graphData}
-  margin={{
-    top: 20,
-    right: 300,
-    left: 20,
-    bottom: 100
-  }}
-  style={{
+  <div style={{ 
+    width: '100%', 
+    height: isMobile ? '300px' : '500px',
     backgroundColor: '#1a2637',
     borderRadius: '8px',
-    padding: '20px'
-  }}
->
-  <CartesianGrid strokeDasharray="3 3" stroke="#2a3747" />
-  <XAxis 
-    dataKey="gameweek"
-    label={{ value: 'Gameweek', position: 'bottom', fill: 'white' }}
-    stroke="white"
-  />
-  <YAxis 
-    reversed={graphView === 'position'}
-    label={{ 
-      value: graphView === 'position' ? 'Position' : 'Points', 
-      angle: -90, 
-      position: 'insideLeft', 
-      fill: 'white' 
-    }}
-    domain={graphView === 'position' ? [1, leagueData.standings.length] : ['auto', 'auto']}
-    ticks={graphView === 'position' ? 
-      Array.from({ length: leagueData.standings.length }, (_, i) => i + 1) : 
-      undefined}
-    stroke="white"
-  />
-  <Tooltip content={<CustomTooltip />} />
-  <Legend 
-    layout="horizontal"
-    verticalAlign="bottom"
-    align="center"
-    wrapperStyle={{
-      paddingTop: '20px',
-      bottom: -80,
-      color: 'white'
-    }}
-  />
+    padding: isMobile ? '10px' : '20px'
+  }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart
+        data={graphData}
+        margin={{
+          top: 20,
+          right: isMobile ? 20 : 300,
+          left: 20,
+          bottom: isMobile ? 60 : 100
+        }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#2a3747" />
+        <XAxis 
+          dataKey="gameweek"
+          label={{ 
+            value: 'Gameweek', 
+            position: 'bottom', 
+            fill: 'white',
+            offset: isMobile ? -5 : 0
+          }}
+          stroke="white"
+          tick={{ fontSize: isMobile ? 10 : 12 }}
+        />
+        <YAxis 
+          reversed={graphView === 'position'}
+          label={{ 
+            value: graphView === 'position' ? 'Position' : 'Points', 
+            angle: -90, 
+            position: 'insideLeft', 
+            fill: 'white' 
+          }}
+          domain={graphView === 'position' ? [1, leagueData.standings.length] : ['auto', 'auto']}
+          ticks={graphView === 'position' ? 
+            Array.from({ length: leagueData.standings.length }, (_, i) => i + 1) : 
+            undefined}
+          stroke="white"
+          tick={{ fontSize: isMobile ? 10 : 12 }}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend 
+          layout={isMobile ? 'horizontal' : 'vertical'}
+          verticalAlign={isMobile ? 'bottom' : 'middle'}
+          align={isMobile ? 'center' : 'right'}
+          wrapperStyle={{
+            paddingTop: isMobile ? '10px' : '20px',
+            right: isMobile ? 0 : 20,
+            bottom: isMobile ? -50 : 'auto',
+            fontSize: isMobile ? 10 : 12
+          }}
+        />
   {leagueData.standings.map((team) => (
     <Line
       key={team.entry_name}
@@ -374,22 +415,23 @@ function App() {
       dataKey={`${team.entry_name}_${graphView}`}
       name={team.entry_name}
       stroke={teamColors[team.entry_name]}
-      dot={{ fill: teamColors[team.entry_name] }}
+      dot={{ r:2, fill: teamColors[team.entry_name] }}
       activeDot={{ r: 8 }}
       opacity={selectedTeams.size === 0 || selectedTeams.has(team.entry_name) ? 1 : 0.1}
       strokeWidth={2}
     />
   ))}
 </LineChart>
+</ResponsiveContainer>
+         </div>
         </div>
 
         <div>
-          <h3>Current Standings</h3>
+          <h3 style={{fontSize: isMobile ? '1.1rem' : '1.25rem' }}>Current Standings</h3>
           <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '10px', 
-            marginBottom: '10px' 
+            overflowX: 'auto'
+            marginBottom: '10px',
+            WebkitOverflowScrolling: 'touch' 
           }}>
             <span style={{ fontWeight: 'bold' }}>Form Guide</span>
             <div 
